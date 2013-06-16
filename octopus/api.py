@@ -30,12 +30,11 @@ class TZ(tzinfo):
 
 
 class Repository(object):
-    DEFAULT_BRANCH_NAME = 'master'
-    scm = 'git'
-
     def __init__(self, repo_path, create=False, **kwargs):
         self._repo = pygit2.Repository(repo_path)
         self.path = self._repo.path
+        self.is_empty = self._repo.is_empty
+        self.is_bare = self._repo.is_bare
 
     def __repr__(self):
         return b'<{0}: {1}>'.format(self.__class__.__name__, self.path.encode('UTF-8'))
