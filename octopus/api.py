@@ -36,8 +36,34 @@ class Repository(object):
         self.is_empty = self._repo.is_empty
         self.is_bare = self._repo.is_bare
 
+        self._ref_map = {}
+        self._set_refs()
+
     def __repr__(self):
         return b'<{0}: {1}>'.format(self.__class__.__name__, self.path.encode('UTF-8'))
+
+    def _set_refs(self):
+        self._ref_map = {}
+
+        for r in self._repo.listall_references():
+            if not r.startswith('refs'):
+                continue
+
+            parts = r.split('/', 2)
+            if len(parts) != 3:
+                continue
+
+            parts.pop(0)
+            reftype = parts[0]
+            refname = parts[1]
+            refid = self._repo.revparse_single(r).hex
+            if refid not in self._ref_map:
+                self._ref_map[refid] = {}
+
+            if reftype not in self._ref_map[refid]:
+                self._ref_map[refid][reftype] = []
+
+            self._ref_map[refid][reftype].append(refname)
 
     @property
     def branches(self):
@@ -83,8 +109,10 @@ class Revision(object):
         self.message = commit.message
         self.offset = self._commit.commit_time_offset
         self.date = datetime.fromtimestamp(self._commit.commit_time, TZ(self.offset))
-
         self._parents = None
+
+        self.tags = self._repository._ref_map.get(commit.hex, {}).get('tags', [])
+        self.branches = self._repository._ref_map.get(commit.hex, {}).get('heads', [])
 
     def __repr__(self):
         return b'<{0}: {1}>'.format(self.__class__.__name__, self.id)
@@ -337,3 +365,4 @@ class Index(object):
             'HEAD', author, commiter,
             message, oid, [self._revision.id]
         )
+        self._repository._set_refs()
