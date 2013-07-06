@@ -7,7 +7,7 @@ from __future__ import (print_function, division, absolute_import, unicode_liter
 from setuptools import find_packages, setup
 
 execfile('octopus/version.py')
-packages = ['octopus'] + ['octopus.%s' % x for x in find_packages('octopus',)]
+packages = [b'octopus'] + [b'octopus.{0}'.format(x) for x in find_packages(b'octopus',)]
 
 setup(
     name='Octopus',
@@ -21,7 +21,7 @@ setup(
     packages=packages,
     test_suite='test',
     classifiers=[
-        'Development Status :: %s' % __version__,
+        'Development Status :: {0}'.format(__version__),
         'Environment :: Library',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: FreeBSD',
