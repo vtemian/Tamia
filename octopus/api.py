@@ -10,9 +10,15 @@ from StringIO import StringIO
 
 import pygit2
 
+from .errors import RepositoryNotFound, NodeNotFound, RevisionNotFound
 
-class UnknownNode(Exception):
-    pass
+
+def clean_path(path):
+    path = os.path.normpath(path)
+    if path.startswith('/'):
+        path = path[1:]
+
+    return path
 
 
 class TZ(tzinfo):
@@ -31,7 +37,11 @@ class TZ(tzinfo):
 
 class Repository(object):
     def __init__(self, repo_path, create=False, **kwargs):
-        self._repo = pygit2.Repository(repo_path)
+        try:
+            self._repo = pygit2.Repository(repo_path)
+        except KeyError:
+            raise RepositoryNotFound('Repository "{0}" does not exist'.format(repo_path))
+
         self.path = self._repo.path
         self.is_empty = self._repo.is_empty
         self.is_bare = self._repo.is_bare
@@ -74,11 +84,15 @@ class Repository(object):
         return tuple([x[10:] for x in self._repo.listall_references() if x.startswith('refs/tags/')])
 
     def get_revision(self, revision=None):
-        instance = self._repo.revparse_single(revision or 'HEAD')
+        try:
+            instance = self._repo.revparse_single(revision or 'HEAD')
+        except KeyError:
+            raise RevisionNotFound('Revision "{0}" does not exist'.format(revision))
+
         return Revision(self, instance)
 
     def history(self, revision=None, reverse=False):
-        initial = self._repo.revparse_single(revision or 'HEAD')
+        initial = self.get_revision(revision)._commit
         sort = reverse and pygit2.GIT_SORT_REVERSE or pygit2.GIT_SORT_TIME
 
         for instance in self._repo.walk(initial.oid, sort):
@@ -125,9 +139,7 @@ class Revision(object):
         return self._parents
 
     def node(self, path=None):
-        path = os.path.normpath(path or '')
-        if path.startswith('/'):
-            path = path[1:]
+        path = clean_path(path or '')
 
         return Node(self, path)
 
@@ -140,7 +152,7 @@ class Signature(object):
         self.date = datetime.fromtimestamp(sig.time, TZ(self.offset))
 
     def __unicode__(self):
-        return '{name} <{email}> {time}{offset}'.format(**self.__dict__)
+        return '{name} <{email}> {date}{offset}'.format(**self.__dict__)
 
     def __repr__(self):
         return '<{0}> {1}'.format(self.__class__.__name__, self.name).encode('UTF-8')
@@ -161,7 +173,7 @@ class Node(object):
             try:
                 entry = revision._commit.tree[path]
             except KeyError:
-                raise UnknownNode('Node "{0}" does not exist'.format(path))
+                raise NodeNotFound('Node "{0}" does not exist'.format(path))
             self._obj = revision._repository._repo.get(entry.oid)
             self.name = path
             self.type = entry.filemode in (16384, 57344) and self.DIR or self.FILE
@@ -207,13 +219,14 @@ class Node(object):
         return FileBlob(blob)
 
     def history(self, revision=None):
-        initial = self._revision._repository._repo.revparse_single(revision or self._revision.id)
+        initial = self._revision._repository.get_revision(revision or self._revision.id)._commit
         walker = self._revision._repository._repo.walk(initial.oid, pygit2.GIT_SORT_TIME)
 
         last = None
         c0 = walker.next()
         try:
             e0 = c0.tree[self.name]
+            last = c0
         except KeyError:
             e0 = None
 
@@ -345,13 +358,61 @@ class Index(object):
 
     def add(self, path, contents, mode=None):
         mode = int('0100%s' % str(mode or '644'), 8)
-        contents = b'%s' % contents.decode('UTF-8')
+        path = clean_path(path)
 
         blob = self._repository._repo.create_blob(contents)
-        self._builder.insert(path, blob, mode)
+
+        # Rewind path to create builder
+        parts = path.split(os.path.sep)[:-1]
+        current_args = (os.path.basename(path), blob, mode)
+
+        while len(parts) > 0:
+            _path = os.path.join(*parts)
+            try:
+                node = self._revision.node(_path)
+                if node.isfile():
+                    raise Exception('Cannot create a directory. "{0}" is a file'.format(node.name))
+                builder = self._repository._repo.TreeBuilder(node._obj)
+            except NodeNotFound:
+                builder = self._repository._repo.TreeBuilder()
+
+            builder.insert(*current_args)
+            oid = builder.write()
+            current_args = (parts[-1], oid, pygit2.GIT_FILEMODE_TREE)
+
+            parts.pop()
+
+        self._builder.insert(*current_args)
 
     def remove(self, path):
-        self._builder.remove(path)
+        path = clean_path(path)
+        parts = path.split(os.path.sep)[:-1]
+
+        if len(parts) == 0:
+            self._builder.remove(path)
+            return
+
+        # First, remove file in last tree builder
+        _path = os.path.join(*parts)
+        node = self._revision.node(_path)
+        builder = self._repository._repo.TreeBuilder(node._obj)
+        builder.remove(os.path.basename(path))
+        oid = builder.write()
+        current_args = (parts[-1], oid, pygit2.GIT_FILEMODE_TREE)
+        parts.pop()
+
+        # Attach tree builders to each one
+        while len(parts) > 0:
+            _path = os.path.join(*parts)
+            node = self._revision.node(_path)
+            tmp = self._repository._repo.TreeBuilder(node._obj)
+            tmp.insert(*current_args)
+            oid = tmp.write()
+            current_args = (parts[-1], oid, pygit2.GIT_FILEMODE_TREE)
+            parts.pop()
+
+        # Attach tree builder
+        self._builder.insert(*current_args)
 
     def commit(self, message, author_name, author_email,
         commiter_name=None, commiter_email=None, date=None, branch=None

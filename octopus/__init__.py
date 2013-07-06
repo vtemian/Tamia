@@ -7,3 +7,4 @@ from __future__ import (print_function, division, absolute_import, unicode_liter
 from .version import __version__
 
 from .api import Repository
+from .errors import *

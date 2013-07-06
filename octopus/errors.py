@@ -4,7 +4,17 @@
 # See the LICENSE for more information.
 from __future__ import (print_function, division, absolute_import, unicode_literals)
 
-import unittest
 
-if __name__ == '__main__':
-    unittest.main()
+class OctopusError(Exception):
+    pass
+
+class RepositoryNotFound(OctopusError):
+    pass
+
+
+class NodeNotFound(OctopusError):
+    pass
+
+
+class RevisionNotFound(OctopusError):
+    pass
