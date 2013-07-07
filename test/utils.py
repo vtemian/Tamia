@@ -15,16 +15,15 @@ class BaseTestCase(TestCase):
     TARFILE = None
     REPO_PATH = None
 
-    @classmethod
-    def setUpClass(cls):
-        if cls.TARFILE:
-            repofile = os.path.join(os.path.dirname(__file__), 'data/%s' % cls.TARFILE)
+    def setUp(self):
+        if self.TARFILE:
+            repofile = os.path.join(os.path.dirname(__file__), 'data/%s' % self.TARFILE)
             if os.path.exists(repofile):
-                cls.REPO_PATH = mkdtemp()
-                with tarfile.open(repofile) as tar:
-                    tar.extractall(cls.REPO_PATH)
+                self.REPO_PATH = mkdtemp()
+                tar = tarfile.open(repofile)
+                tar.extractall(self.REPO_PATH)
+                tar.close()
 
-    @classmethod
-    def tearDownClass(cls):
-        if cls.REPO_PATH:
-            rmtree(cls.REPO_PATH)
+    def tearDown(self):
+        if self.REPO_PATH:
+            rmtree(self.REPO_PATH)

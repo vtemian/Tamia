@@ -14,6 +14,7 @@ class BareTestCase(BaseTestCase):
     TARFILE = 'barerepo.tar.gz'
 
     def setUp(self):
+        super(BareTestCase, self).setUp()
         self.repo = Repository(self.REPO_PATH)
 
     def test_bare(self):
@@ -62,6 +63,7 @@ class EmptyTestCase(BaseTestCase):
     TARFILE = 'emptyrepo.tar.gz'
 
     def setUp(self):
+        super(EmptyTestCase, self).setUp()
         self.repo = Repository(self.REPO_PATH)
 
     def test_bare(self):
@@ -75,5 +77,6 @@ class IndexTestCase(BaseTestCase):
     TARFILE = 'testrepo.tar.gz'
 
     def setUp(self):
+        super(IndexTestCase, self).setUp()
         self.repo = Repository(self.REPO_PATH)
 
