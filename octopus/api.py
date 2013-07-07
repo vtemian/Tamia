@@ -358,7 +358,7 @@ class Index(object):
 
     def add(self, path, contents, mode=None):
         mode = int('0100%s' % str(mode or '644'), 8)
-        path = clean_path(path)
+        path = clean_path(path).encode('UTF-8')
 
         blob = self._repository._repo.create_blob(contents)
 
@@ -369,7 +369,7 @@ class Index(object):
         while len(parts) > 0:
             _path = os.path.join(*parts)
             try:
-                node = self._revision.node(_path)
+                node = self._revision.node(_path.decode('UTF-8'))
                 if node.isfile():
                     raise Exception('Cannot create a directory. "{0}" is a file'.format(node.name))
                 builder = self._repository._repo.TreeBuilder(node._obj)
