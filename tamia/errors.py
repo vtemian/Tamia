@@ -8,6 +8,7 @@ from __future__ import (print_function, division, absolute_import, unicode_liter
 class TamiaError(Exception):
     pass
 
+
 class RepositoryNotFound(TamiaError):
     pass
 
@@ -18,6 +19,7 @@ class NodeNotFound(TamiaError):
 
 class RevisionNotFound(TamiaError):
     pass
+
 
 class IdxError(TamiaError):
     pass

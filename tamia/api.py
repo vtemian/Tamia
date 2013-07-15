@@ -4,35 +4,15 @@
 # See the LICENSE for more information.
 from __future__ import (print_function, division, absolute_import, unicode_literals)
 
-from datetime import datetime, timedelta, tzinfo
+from datetime import datetime
 import os.path
 from StringIO import StringIO
 
 import pygit2
 
 from .errors import RepositoryNotFound, NodeNotFound, RevisionNotFound
-
-
-def clean_path(path):
-    path = os.path.normpath(path)
-    if path.startswith('/'):
-        path = path[1:]
-
-    return path
-
-
-class TZ(tzinfo):
-    def __init__(self, offset):
-        self._offset = offset
-
-    def utcoffset(self, dt):
-        return timedelta(minutes=self._offset)
-
-    def tzname(self, dt):
-        return dt.strftime('%z')
-
-    def dst(self, dt):
-        return timedelta(minutes=self._offset)
+from .index import Index
+from .utils import clean_path, TZ
 
 
 class Repository(object):
@@ -116,7 +96,7 @@ class Revision(object):
     def __init__(self, repository, commit):
         self._repository = repository
         self._commit = commit
-        self.id = commit.oid.hex
+        self.id = commit.hex
         self.short_id = self.id[:7]
         self.author = Signature(commit.author)
         self.committer = Signature(commit.committer)
@@ -183,7 +163,7 @@ class Node(object):
 
     def __repr__(self):
         suffix = self.isdir() and '/' or ''
-        return b'<{0}: {1}{2}>'.format(self.__class__.__name__, self.name, suffix).encode('UTF-8')
+        return '<{0}: {1}{2}>'.format(self.__class__.__name__, self.name, suffix).encode('UTF-8')
 
     def isdir(self):
         return self.type == self.DIR
@@ -204,7 +184,7 @@ class Node(object):
         if isinstance(obj, pygit2.Tree):
             for entry in obj:
                 dirname = self.isdir() and self.name or self.dirname
-                node = Node(self._revision, os.path.join(dirname, entry.name))
+                node = Node(self._revision, os.path.join(dirname, entry.name.decode('UTF-8')))
 
                 yield node
                 if recursive and node.isdir() and node._obj is not None:
@@ -233,7 +213,7 @@ class Node(object):
         for c1 in walker:
             try:
                 e1 = c1.tree[self.name]
-                if e0 and e0.oid.hex != e1.oid.hex:
+                if e0 and e0.oid != e1.oid:
                     yield Revision(self._revision._repository, c0)
             except KeyError:
                 e1 = None
@@ -272,7 +252,7 @@ class FileBlob(object):
 
 
 class Diff(object):
-    def __init__(self, node, revision):
+    def __init__(self, node, revision, reversed=False):
         self._node = node
         self._t0 = node._revision._commit.tree
 
@@ -280,9 +260,6 @@ class Diff(object):
         self._t1 = self._rev._commit.tree
 
         self._diff = None
-
-    def __unicode__(self):
-        return ''.join(unicode(patch) for patch in self)
 
     def __repr__(self):
         return '<{0}: {1}..{2}>'.format(self.__class__.__name__,
@@ -292,24 +269,31 @@ class Diff(object):
 
     def __iter__(self):
         if self._diff is None:
-            self.__init_diff()
+            self._init_diff()
 
         for f in self._files:
             yield f
 
-    def __init_diff(self):
-        self._diff = self._t0.diff_to_tree(self._t1)
+    @property
+    def patch(self):
+        if self._diff is None:
+            self._init_diff()
+
+        return self._diff.patch
+
+    def _init_diff(self):
+        self._diff = self._t1.diff_to_tree(self._t0)
 
         files = {}
 
         for p in self._diff:
             if self._node.name and not (
-                p.old_file_path.startswith(self._node.name) or
-                p.new_file_path.startswith(self._node.name)
+                p.old_file_path.startswith(self._node.name.encode('UTF-8')) or
+                p.new_file_path.startswith(self._node.name.encode('UTF-8'))
             ):
                 continue
 
-            _id = '%s@%s' % (p.old_file_path, p.new_file_path)
+            _id = '%s@%s' % (p.old_file_path.decode('UTF-8'), p.new_file_path.decode('UTF-8'))
             if not _id in files:
                 files[_id] = Patch(p)
 
@@ -321,17 +305,9 @@ class Diff(object):
 
 class Patch(object):
     def __init__(self, patch):
-        self.old_path = patch.old_file_path
-        self.new_path = patch.new_file_path
+        self.old_path = patch.old_file_path.decode('UTF-8')
+        self.new_path = patch.new_file_path.decode('UTF-8')
         self.hunks = []
-
-    def __unicode__(self):
-        return '--a/{0}\n++b/{1}\n{2}'.format(self.old_path, self.new_path,
-            ''.join(unicode(h) for h in self.hunks)
-        )
-
-    def __repr__(self):
-        pass
 
 
 class Hunk(object):
@@ -339,91 +315,3 @@ class Hunk(object):
         self.old_start = hunk.old_start
         self.new_start = hunk.new_start
         self.lines = hunk.lines
-
-    def __unicode__(self):
-        return '@@ -{0} +{1} @@\n{2}'.format(self.old_start, self.new_start,
-            ''.join('%s%s' % x for x in self.lines)
-        )
-
-
-class Index(object):
-    def __init__(self, repository):
-        self._repository = repository
-        self._revision = None
-        self._builder = None
-
-    def set_revision(self, revision):
-        self._revision = self._repository.get_revision(revision)
-        self._builder = self._repository._repo.TreeBuilder(self._revision._commit.tree)
-
-    def add(self, path, contents, mode=None):
-        mode = int('0100%s' % str(mode or '644'), 8)
-        path = clean_path(path).encode('UTF-8')
-
-        blob = self._repository._repo.create_blob(contents)
-
-        # Rewind path to create builder
-        parts = path.split(os.path.sep)[:-1]
-        current_args = (os.path.basename(path), blob, mode)
-
-        while len(parts) > 0:
-            _path = os.path.join(*parts)
-            try:
-                node = self._revision.node(_path.decode('UTF-8'))
-                if node.isfile():
-                    raise Exception('Cannot create a directory. "{0}" is a file'.format(node.name))
-                builder = self._repository._repo.TreeBuilder(node._obj)
-            except NodeNotFound:
-                builder = self._repository._repo.TreeBuilder()
-
-            builder.insert(*current_args)
-            oid = builder.write()
-            current_args = (parts[-1], oid, pygit2.GIT_FILEMODE_TREE)
-
-            parts.pop()
-
-        self._builder.insert(*current_args)
-
-    def remove(self, path):
-        path = clean_path(path)
-        parts = path.split(os.path.sep)[:-1]
-
-        if len(parts) == 0:
-            self._builder.remove(path)
-            return
-
-        # First, remove file in last tree builder
-        _path = os.path.join(*parts)
-        node = self._revision.node(_path)
-        builder = self._repository._repo.TreeBuilder(node._obj)
-        builder.remove(os.path.basename(path))
-        oid = builder.write()
-        current_args = (parts[-1], oid, pygit2.GIT_FILEMODE_TREE)
-        parts.pop()
-
-        # Attach tree builders to each one
-        while len(parts) > 0:
-            _path = os.path.join(*parts)
-            node = self._revision.node(_path)
-            tmp = self._repository._repo.TreeBuilder(node._obj)
-            tmp.insert(*current_args)
-            oid = tmp.write()
-            current_args = (parts[-1], oid, pygit2.GIT_FILEMODE_TREE)
-            parts.pop()
-
-        # Attach tree builder
-        self._builder.insert(*current_args)
-
-    def commit(self, message, author_name, author_email,
-        commiter_name=None, commiter_email=None, date=None, branch=None
-    ):
-        author = pygit2.Signature(author_name, author_email)
-        commiter = pygit2.Signature(commiter_name or author_name, commiter_email or author_email)
-        branch = branch or 'HEAD'
-        oid = self._builder.write()
-
-        self._repository._repo.create_commit(
-            'HEAD', author, commiter,
-            message, oid, [self._revision.id]
-        )
-        self._repository._set_refs()
