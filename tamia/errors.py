@@ -4,7 +4,20 @@
 # See the LICENSE for more information.
 from __future__ import (print_function, division, absolute_import, unicode_literals)
 
-import unittest
 
-if __name__ == '__main__':
-    unittest.main()
+class TamiaError(Exception):
+    pass
+
+class RepositoryNotFound(TamiaError):
+    pass
+
+
+class NodeNotFound(TamiaError):
+    pass
+
+
+class RevisionNotFound(TamiaError):
+    pass
+
+class IdxError(TamiaError):
+    pass
