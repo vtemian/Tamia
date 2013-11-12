@@ -18,7 +18,7 @@ setup(
     url='https://github.com/olivier-m/Tamia',
     license='MIT License',
     keywords='git vcs libgit2',
-    install_requires=['pygit2'],
+    install_requires=['pygit2==0.19.1'],
     packages=[b'tamia'],
     test_suite='test',
     classifiers=[

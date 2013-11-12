@@ -20,7 +20,10 @@ class Repository(object):
         try:
             self._repo = pygit2.Repository(repo_path)
         except KeyError:
-            raise RepositoryNotFound('Repository "{0}" does not exist'.format(repo_path))
+            if not create:
+                raise RepositoryNotFound('Repository "{0}" does not exist'.format(repo_path))
+
+            self._repo = pygit2.init_repository(repo_path, **kwargs)
 
         self.path = self._repo.path
         self.is_empty = self._repo.is_empty

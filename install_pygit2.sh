@@ -30,7 +30,7 @@ cmake --build . --target install
 
 # Building pygit2
 cd ${SRC}/pygit2
-git checkout v0.19.0
+git checkout v0.19.1
 LIBGIT2=${TARGET} python setup.py build_ext -R ${TARGET}/lib
 python setup.py build
 
