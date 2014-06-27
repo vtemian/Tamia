@@ -5,7 +5,17 @@
 from __future__ import (print_function, division, absolute_import,
                         unicode_literals)
 
+import os
+
 from setuptools import find_packages, setup
+from setuptools.command.install import install
+
+
+class Pygit2Install(install):
+    def run(self):
+        os.system("./install_pygit2.sh")
+        install.run(self)
+
 
 execfile('tamia/version.py')
 packages = [b'tamia'] + [b'tamia.{0}'.format(x)
@@ -21,8 +31,8 @@ setup(
     license='MIT License',
     keywords='git vcs libgit2',
     packages=[b'tamia'],
-    scripts=['install_pygit2.sh'],
     test_suite='test',
+    cmdclass={'install': Pygit2Install},
     classifiers=[
         'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',
