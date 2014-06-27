@@ -2,12 +2,14 @@
 #
 # This file is part of Tamia released under the FreeBSD license.
 # See the LICENSE for more information.
-from __future__ import (print_function, division, absolute_import, unicode_literals)
+from __future__ import (print_function, division, absolute_import,
+                        unicode_literals)
 
 from setuptools import find_packages, setup
 
 execfile('tamia/version.py')
-packages = [b'tamia'] + [b'tamia.{0}'.format(x) for x in find_packages(b'tamia',)]
+packages = [b'tamia'] + [b'tamia.{0}'.format(x)
+                         for x in find_packages(b'tamia',)]
 
 setup(
     name='Tamia',
@@ -18,8 +20,8 @@ setup(
     url='https://github.com/olivier-m/Tamia',
     license='MIT License',
     keywords='git vcs libgit2',
-    install_requires=['pygit2==0.19.1'],
     packages=[b'tamia'],
+    scripts=['install_pygit2.sh'],
     test_suite='test',
     classifiers=[
         'Development Status :: 4 - Beta',
