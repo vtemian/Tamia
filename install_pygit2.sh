@@ -22,7 +22,7 @@ test -d pygit2 || git clone git://github.com/libgit2/pygit2.git
 
 # Building libgit2
 cd ${SRC}/libgit2
-git checkout v0.19.0
+git checkout v0.21.0
 rm -rf build && mkdir build
 cd build
 cmake .. -DCMAKE_INSTALL_PREFIX=${TARGET}
