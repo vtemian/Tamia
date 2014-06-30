@@ -29,7 +29,7 @@ class BareTestCase(BaseTestCase):
         self.assertTrue(isinstance(head, Revision))
 
     def test_branches(self):
-        self.assertEqual(self.repo.branches, ('master',))
+        self.assertEqual(self.repo.branches, ['master',])
 
     def test_tags(self):
         self.assertEqual(self.repo.tags, tuple())
@@ -133,7 +133,7 @@ class IndexTestCase(BaseTestCase):
         self.assertEqual([x.message for x in self.repo.history()][0], 'Second commit €')
 
         diff = self.repo.get_revision().node().diff('HEAD~1')
-        self.assertEqual(diff.patch, 'diff --git c/test/accentué c/test/accentué\nindex 0ee3895..69997c2 100644\n--- c/test/accentué\n+++ c/test/accentué\n@@ -1 +1,2 @@\n Some content\n+testé\n')
+        self.assertEqual(diff.patch, 'diff --git a/test/accentué b/test/accentué\nindex 0ee3895..69997c2 100644\n--- a/test/accentué\n+++ b/test/accentué\n@@ -1 +1,2 @@\n Some content\n+testé\n')
 
         for patch in diff:
             self.assertEqual(patch.old_path, 'test/accentué')
