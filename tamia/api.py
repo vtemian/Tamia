@@ -2,7 +2,8 @@
 #
 # This file is part of Tamia released under the MIT license.
 # See the LICENSE for more information.
-from __future__ import (print_function, division, absolute_import, unicode_literals)
+from __future__ import (print_function, division, absolute_import,
+                        unicode_literals)
 
 from datetime import datetime
 import os.path
@@ -21,7 +22,8 @@ class Repository(object):
             self._repo = pygit2.Repository(repo_path)
         except KeyError:
             if not create:
-                raise RepositoryNotFound('Repository "{0}" does not exist'.format(repo_path))
+                message = 'Repository "{0}" does not exist'.format(repo_path)
+                raise RepositoryNotFound(message)
 
             self._repo = pygit2.init_repository(repo_path, **kwargs)
 
@@ -33,7 +35,8 @@ class Repository(object):
         self._set_refs()
 
     def __repr__(self):
-        return b'<{0}: {1}>'.format(self.__class__.__name__, self.path.encode('UTF-8'))
+        return b'<{0}: {1}>'.format(self.__class__.__name__,
+                                    self.path.encode('UTF-8'))
 
     def _set_refs(self):
         self._ref_map = {}
@@ -64,13 +67,15 @@ class Repository(object):
 
     @property
     def tags(self):
-        return tuple([x[10:] for x in self._repo.listall_references() if x.startswith('refs/tags/')])
+        return tuple([x[10:] for x in self._repo.listall_references()
+                     if x.startswith('refs/tags/')])
 
     def get_revision(self, revision=None):
         try:
             instance = self._repo.revparse_single(revision or 'HEAD')
         except KeyError:
-            raise RevisionNotFound('Revision "{0}" does not exist'.format(revision))
+            message = 'Revision "{0}" does not exist'.format(revision)
+            raise RevisionNotFound(message)
 
         return Revision(self, instance)
 
@@ -105,11 +110,14 @@ class Revision(object):
         self.committer = Signature(commit.committer)
         self.message = commit.message
         self.offset = self._commit.commit_time_offset
-        self.date = datetime.fromtimestamp(self._commit.commit_time, TZ(self.offset))
+        self.date = datetime.fromtimestamp(self._commit.commit_time,
+                                           TZ(self.offset))
         self._parents = None
 
-        self.tags = self._repository._ref_map.get(commit.hex, {}).get('tags', [])
-        self.branches = self._repository._ref_map.get(commit.hex, {}).get('heads', [])
+        self.tags = self._repository._ref_map.get(commit.hex, {}).get('tags',
+                                                                      [])
+        self.branches = self._repository._ref_map.get(commit.hex,
+                                                      {}).get('heads', [])
 
     def __repr__(self):
         return b'<{0}: {1}>'.format(self.__class__.__name__, self.id)
@@ -117,7 +125,8 @@ class Revision(object):
     @property
     def parents(self):
         if self._parent is None:
-            self._parents = [Revision(self._repository, x) for x in self._commit.parents]
+            self._parents = [Revision(self._repository, x)
+                             for x in self._commit.parents]
 
         return self._parents
 
@@ -138,7 +147,8 @@ class Signature(object):
         return '{name} <{email}> {date}{offset}'.format(**self.__dict__)
 
     def __repr__(self):
-        return '<{0}> {1}'.format(self.__class__.__name__, self.name).encode('UTF-8')
+        return '<{0}> {1}'.format(self.__class__.__name__,
+                                  self.name).encode('UTF-8')
 
 
 class Node(object):
@@ -166,7 +176,8 @@ class Node(object):
 
     def __repr__(self):
         suffix = self.isdir() and '/' or ''
-        return '<{0}: {1}{2}>'.format(self.__class__.__name__, self.name, suffix).encode('UTF-8')
+        return '<{0}: {1}{2}>'.format(self.__class__.__name__, self.name,
+                                      suffix).encode('UTF-8')
 
     def isdir(self):
         return self.type == self.DIR
@@ -187,7 +198,8 @@ class Node(object):
         if isinstance(obj, pygit2.Tree):
             for entry in obj:
                 dirname = self.isdir() and self.name or self.dirname
-                node = Node(self._revision, os.path.join(dirname, entry.name.decode('UTF-8')))
+                node = Node(self._revision,
+                            os.path.join(dirname, entry.name.decode('UTF-8')))
 
                 yield node
                 if recursive and node.isdir() and node._obj is not None:
@@ -266,9 +278,8 @@ class Diff(object):
 
     def __repr__(self):
         return '<{0}: {1}..{2}>'.format(self.__class__.__name__,
-            self._node._revision.short_id,
-            self._rev.short_id
-        )
+                                        self._node._revision.short_id,
+                                        self._rev.short_id)
 
     def __iter__(self):
         if self._diff is None:
@@ -296,8 +307,9 @@ class Diff(object):
             ):
                 continue
 
-            _id = '%s@%s' % (p.old_file_path.decode('UTF-8'), p.new_file_path.decode('UTF-8'))
-            if not _id in files:
+            _id = '%s@%s' % (p.old_file_path.decode('UTF-8'),
+                             p.new_file_path.decode('UTF-8'))
+            if _id not in files:
                 files[_id] = Patch(p)
 
             for h in p.hunks:

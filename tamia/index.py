@@ -2,7 +2,8 @@
 #
 # This file is part of Tamia released under the MIT license.
 # See the LICENSE for more information.
-from __future__ import (print_function, division, absolute_import, unicode_literals)
+from __future__ import (print_function, division,
+                        absolute_import, unicode_literals)
 
 from heapq import heappush, heappop
 import os.path
@@ -59,7 +60,9 @@ class Index(object):
 
         # Sort index items
         items = self._stash.items()
-        items.sort(key=lambda x: (x[1][0], x[0]))  # Sort by remove status then path
+
+        # Sort by remove status then path
+        items.sort(key=lambda x: (x[1][0], x[0]))
 
         # Create tree
         tree = IndexTree(self._revision)
@@ -75,7 +78,8 @@ class Index(object):
         self._dirty = True
 
         try:
-            self._repository._repo.create_commit(ref, author, commiter, message, oid, parents)
+            self._repository._repo.create_commit(ref, author, commiter,
+                                                 message, oid, parents)
         finally:
             self._repository._set_refs()
 
@@ -120,7 +124,7 @@ class IndexTree(object):
 
         # Create builders if needed
         for i in range(len(parts)):
-            _path = os.path.join(*parts[0:i+1])
+            _path = os.path.join(*parts[0:i + 1])
 
             if self._builders.get(_path):
                 continue
@@ -129,12 +133,14 @@ class IndexTree(object):
             try:
                 node = self._revision.node(_path.decode('UTF-8'))
                 if node.isfile():
-                    raise IdxError('Cannot create a tree builder. "{0}" is a file'.format(node.name))
+                    message = 'Cannot create a tree builder. "{0}" is a file'.format(node.name)
+                    raise IdxError(message)
                 args.append(node._obj.oid)
             except NodeNotFound:
                 pass
 
-            self._builders[_path] = (os.path.dirname(_path), self._repository._repo.TreeBuilder(*args))
+            self._builders[_path] = (os.path.dirname(_path),
+                                     self._repository._repo.TreeBuilder(*args))
 
         return self._builders.get(path)[1]
 
@@ -157,7 +163,9 @@ class IndexTree(object):
             if parent is not None:
                 oid = builder.write()
                 builder.clear()
-                self._builders.get(parent)[1].insert(os.path.basename(path), oid, pygit2.GIT_FILEMODE_TREE)
+                self._builders.get(parent)[1].insert(os.path.basename(path),
+                                                     oid,
+                                                     pygit2.GIT_FILEMODE_TREE)
 
         oid = builder.write()
         builder.clear()
