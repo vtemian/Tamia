@@ -17,15 +17,18 @@ from .utils import clean_path, TZ
 
 
 class Repository(object):
-    def __init__(self, repo_path, create=False, **kwargs):
-        try:
-            self._repo = pygit2.Repository(repo_path)
-        except KeyError:
-            if not create:
-                message = 'Repository "{0}" does not exist'.format(repo_path)
-                raise RepositoryNotFound(message)
+    def __init__(self, repo_path, repo=None, create=False, **kwargs):
+        if repo:
+            self._repo = repo
+        else:
+            try:
+                self._repo = pygit2.Repository(repo_path)
+            except KeyError:
+                if not create:
+                    message = 'Repository "{0}" does not exist'.format(repo_path)
+                    raise RepositoryNotFound(message)
 
-            self._repo = pygit2.init_repository(repo_path, **kwargs)
+                self._repo = pygit2.init_repository(repo_path, **kwargs)
 
         self.path = self._repo.path
         self.is_empty = self._repo.is_empty
@@ -37,6 +40,11 @@ class Repository(object):
     def __repr__(self):
         return b'<{0}: {1}>'.format(self.__class__.__name__,
                                     self.path.encode('UTF-8'))
+
+    @classmethod
+    def clone(cls, path, remote_url):
+        pygit2.clone_repository(remote_url, path)
+        return cls(path)
 
     def _set_refs(self):
         self._ref_map = {}
