@@ -2,4 +2,4 @@
 #
 # This file is part of Tamia released under the MIT license.
 # See the LICENSE for more information.
-__version__ = '0.1.4'
+__version__ = '0.1.5'

@@ -2,7 +2,7 @@
 #
 # This file is part of Tamia released under the MIT license.
 # See the LICENSE for more information.
-from __future__ import (print_function, division, absolute_import,
+from __future__ import (division, absolute_import,
                         unicode_literals)
 
 from datetime import datetime
@@ -37,6 +37,9 @@ class Repository(object):
         self._ref_map = {}
         self._set_refs()
 
+        self.index = Index(self)
+        self.index.set_revision("HEAD")
+
     def __repr__(self):
         return b'<{0}: {1}>'.format(self.__class__.__name__,
                                     self.path.encode('UTF-8'))
@@ -69,6 +72,15 @@ class Repository(object):
 
             self._ref_map[refid][reftype].append(refname)
 
+    def push(self, push_remote, branch):
+        remote = [remote for remote in self._repo.remotes
+                  if remote.name == push_remote]
+
+        if not remote:
+            raise NodeNotFound("Missing remote")
+
+        remote[0].push("refs/remotes/%s/%s" % (push_remote, branch))
+
     @property
     def branches(self):
         return self._repo.listall_branches()
@@ -96,13 +108,6 @@ class Repository(object):
 
     def diff(self, rev1, rev2):
         return self.get_revision(rev1).node().diff(rev2)
-
-    def index(self, revision=None):
-        index = Index(self)
-        if revision:
-            index.set_revision(revision)
-
-        return index
 
     def __iter__(self):
         return self.history()
