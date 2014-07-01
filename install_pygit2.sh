@@ -22,7 +22,7 @@ test -d pygit2 || git clone git://github.com/libgit2/pygit2.git
 
 # Building libgit2
 cd ${SRC}/libgit2
-git checkout v0.20.0
+git checkout v0.21.0
 rm -rf build && mkdir build
 cd build
 cmake .. -DCMAKE_INSTALL_PREFIX=${TARGET}
@@ -30,7 +30,7 @@ cmake --build . --target install
 
 # Building pygit2
 cd ${SRC}/pygit2
-git checkout v0.20.3
+git checkout v0.21.0
 LIBGIT2=${TARGET} python setup.py build_ext -R ${TARGET}/lib
 python setup.py build
 
