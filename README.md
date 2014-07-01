@@ -1,5 +1,4 @@
-Tamia [![Build
-Status](https://travis-ci.org/vtemian/Tamia.svg)](https://travis-ci.org/vtemian/Tamia)
+Tamia [![BuildStatus](https://travis-ci.org/vtemian/Tamia.svg)](https://travis-ci.org/vtemian/Tamia)
 =====
 
 Tamia is a basic wrapper arroud [pygit2](https://github.com/libgit2/pygit2).
