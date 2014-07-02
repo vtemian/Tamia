@@ -2,7 +2,7 @@ argparse==1.2.1
 cffi==0.8.2
 py==1.4.20
 pycparser==2.10
-pygit2==0.20.3
+pygit2==0.21.0
 tox==1.7.1
 virtualenv==1.11.6
 wsgiref==0.1.2
