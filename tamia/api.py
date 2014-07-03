@@ -72,14 +72,21 @@ class Repository(object):
 
             self._ref_map[refid][reftype].append(refname)
 
-    def push(self, push_remote, branch):
+    def push(self, remote_name, branch):
+        remote = self.get_remote(remote_name)
+        remote.push("refs/remotes/%s/%s" % (remote_name, branch))
+
+    def get_remote(self, name):
         remote = [remote for remote in self._repo.remotes
-                  if remote.name == push_remote]
+                  if remote.name == name]
 
         if not remote:
             raise NodeNotFound("Missing remote")
 
-        remote[0].push("refs/remotes/%s/%s" % (push_remote, branch))
+        return remote[0]
+
+    def pull(self, pull_remote, branch):
+        pass
 
     @property
     def branches(self):
