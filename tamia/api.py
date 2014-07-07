@@ -38,7 +38,6 @@ class Repository(object):
         self._set_refs()
 
         self.index = Index(self)
-        self.index.set_revision("HEAD")
 
     def __repr__(self):
         return b'<{0}: {1}>'.format(self.__class__.__name__,
@@ -46,13 +45,15 @@ class Repository(object):
 
     @classmethod
     def clone(cls, path, remote_url):
-        pygit2.clone_repository(remote_url, path)
-        return cls(path)
+        repo = pygit2.clone_repository(remote_url, path, bare=False)
+        repo.checkout_head(pygit2.GIT_CHECKOUT_SAFE_CREATE)
+        return cls(path, repo=repo)
 
     def _set_refs(self):
         self._ref_map = {}
 
         for r in self._repo.listall_references():
+            print r
             if not r.startswith('refs'):
                 continue
 
@@ -86,7 +87,13 @@ class Repository(object):
         return remote[0]
 
     def pull(self, pull_remote, branch):
-        pass
+        # fetch from remote
+        remote = self.get_remote(pull_remote)
+        remote.fetch()
+
+        revision = self.get_revision("refs/remotes/%s/%s" %
+                                     (pull_remote, branch))
+        self._repo.merge(revision.id)
 
     @property
     def branches(self):
